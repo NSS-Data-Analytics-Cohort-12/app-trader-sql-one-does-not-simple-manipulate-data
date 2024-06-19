@@ -1,6 +1,11 @@
-Select name, ROUND(AVG((PLAY.rating + APP.rating)/2), 5) as combined_rating
-FROM app_store_apps APP
-LEFT JOIN play_store_apps PLAY
-USING(name)
+SELECT
+	name,
+	MAX(maxprice)
+FROM (
+	SELECT name, price AS maxprice
+	FROM app_store_apps AS asa
+	UNION
+	SELECT name, CAST(TRIM('$' from price) AS numeric) AS maxprice
+	FROM play_store_apps AS psa
+	) AS subquery
 GROUP BY name
-ORDER BY combined_rating DESC
