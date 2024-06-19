@@ -1,6 +1,6 @@
 WITH data_list AS
 	(SELECT
-		name
+		DISTINCT name
 		,CASE
 				WHEN (a.rating IS NOT NULL AND p.rating IS NOT NULL) THEN 2
 				ELSE 1 END AS number_stores
@@ -24,8 +24,10 @@ WITH data_list AS
 	FULL JOIN play_store_apps p 
 	USING(name) 
 	)
-SELECT *
+SELECT  *
 	, (lifespan_years * 12000)::MONEY AS lifespan_marketing_cost
 	, ((lifespan_years * 60000)* number_stores)::MONEY AS lifespan_revenue
 FROM data_list
-ORDER BY number_stores DESC
+WHERE number_stores = 2
+	AND avg_rating >= 4
+ORDER BY lifespan_revenue DESC
