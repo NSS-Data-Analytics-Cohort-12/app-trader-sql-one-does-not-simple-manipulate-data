@@ -1,50 +1,8 @@
--- a. Develop some general recommendations as to the price range, genre, content rating, or anything else for apps that the company should target.
-
--- price range - most are free or 2.99
--- SELECT
--- 	-- a.price AS app_price,
--- 	p.price AS play_price,
--- 	COUNT(*)
--- FROM app_store_apps a
--- JOIN play_store_apps p
--- 	ON a.name = p.name
--- GROUP BY 1
--- ORDER BY 2 DESC, 1 ASC
-
--- genre 
--- SELECT
--- 	a.primary_genre,
--- 	-- p.genres,
--- 	COUNT(*)
--- FROM app_store_apps a
--- JOIN play_store_apps p
--- 	ON a.name = p.name
--- GROUP BY 1
--- ORDER BY 2 DESC, 1 ASC
-
-
--- couldn't get this to work
--- SELECT
--- 	name,
--- 	CASE
--- 		WHEN a.price > CAST(TRIM('$' FROM p.price) AS numeric) THEN a.price
--- 		WHEN CAST(TRIM('$' FROM p.price) AS numeric) > a.price THEN CAST(TRIM('$' FROM p.price) AS numeric)
--- 		WHEN a.price = CAST(TRIM('$' FROM p.price) AS numeric) THEN a.price
--- 		ELSE 123456789
--- 	END AS max_price 
--- FROM app_store_apps AS a
--- FULL JOIN play_store_apps AS p
--- 	-- ON a.name = p.name
--- 	USING(name)
--- ORDER BY 2 DESC
-	
-
-
 
 WITH 
 subquery1 AS (  -- calculates max_price, avg_rating, monthly_revenue, and app store availability
 	SELECT
-	      COALESCE(a.name, p.name) AS app_name -- returns the first non null value, so either name is fine since they are the same 
+	      DISTINCT COALESCE(a.name, p.name) AS app_name -- returns the first non null value, so either name is fine since they are the same 
 		, GREATEST(a.price, CAST(TRIM('$' FROM p.price) AS numeric))::MONEY AS max_price -- returns whichever price is greater  
 		, CASE -- returns avg rating when rating in both tables, or rating when in one table 
 			WHEN (a.rating IS NULL AND p.rating IS NOT NULL) THEN ROUND(ROUND(p.rating * 2) / 2, 1)
@@ -70,7 +28,7 @@ subquery1 AS (  -- calculates max_price, avg_rating, monthly_revenue, and app st
 	),
 subquery2 AS (  -- calculates purchase_price (by building on max_price), projected_lifespan (by building on avg_rating), monthly_income (by building on monthly_revenue). 
 	SELECT
-		app_name
+		DISTINCT app_name
 		, CASE -- calculates purchase price 
 			WHEN max_price <= 1::MONEY THEN 10000::MONEY
 			ELSE (max_price * 10000)::MONEY
@@ -94,55 +52,16 @@ SELECT
 	, monthly_revenue
 	, monthly_income
 	, monthly_income*12 * projected_lifespan - purchase_price AS total_income  
-	--, SUM(total_review_count) OVER(PARTITION BY s2.app_name) AS sum_total_review_count
+	, SUM(total_review_count) OVER(PARTITION BY s2.app_name) AS sum_total_review_count
  	--, total_review_count
 FROM subquery1 AS s1
 FULL JOIN subquery2 AS s2 
 	ON s1.app_name = s2.app_name
 WHERE s2.app_name IS NOT NULL 
 	AND total_review_count IS NOT NULL
-	--AND s2.app_name = 'Instagram'
-ORDER BY total_income DESC --, sum_total_review_count DESC
-LIMIT 152
-
-
-
--- sean's code: 
--- WITH data_list AS
--- 	(SELECT
--- 		name
--- 		,CASE
--- 				WHEN (a.rating IS NOT NULL AND p.rating IS NOT NULL) THEN 2
--- 				ELSE 1 END AS number_stores
--- 		,CASE
--- 				WHEN (a.rating IS NULL AND p.rating IS NOT NULL) THEN ROUND(ROUND(p.rating * 2) / 2, 1)
--- 				WHEN (p.rating IS NULL AND a.rating IS NOT NULL) THEN ROUND(ROUND(a.rating * 2) / 2, 1)
--- 				WHEN (a.rating IS NOT NULL AND p.rating IS NOT NULL) THEN ROUND(ROUND(((a.rating+p.rating)/2) * 2) / 2, 1)
--- 				ELSE '0'
--- 				END AS avg_rating
--- 		,CASE
--- 				WHEN (a.rating IS NULL AND p.rating IS NOT NULL) THEN ((ROUND(ROUND(p.rating * 2) / 2, 1)) + .5) * 2
--- 				WHEN (p.rating IS NULL AND a.rating IS NOT NULL) THEN ((ROUND(ROUND(a.rating * 2) / 2, 1)) + .5) * 2
--- 				WHEN (a.rating IS NOT NULL AND p.rating IS NOT NULL) THEN ((ROUND(ROUND(((a.rating+p.rating)/2) * 2) / 2, 1))+.5) * 2
--- 				ELSE '1'
--- 				END AS lifespan_years
--- 		,GREATEST(a.price, CAST(TRIM('$' FROM p.price) AS numeric))::MONEY AS app_price
--- 		,CASE
--- 				WHEN GREATEST(a.price, CAST(TRIM('$' FROM p.price) AS numeric)) = 0 THEN (GREATEST(a.price, CAST(TRIM('$' FROM p.price) AS numeric))+1 * 10000)::MONEY
--- 				ELSE (GREATEST(a.price, CAST(TRIM('$' FROM p.price) AS numeric))* 10000)::MONEY END AS purchase_price
--- 	FROM app_store_apps a
--- 	FULL JOIN play_store_apps p
--- 	USING(name)
--- 	)
--- SELECT *
--- 	, (lifespan_years * 12000)::MONEY AS lifespan_marketing_cost
--- 	, ((lifespan_years * 60000)* number_stores)::MONEY AS lifespan_revenue
--- 	, ((lifespan_years * 60000)* number_stores)::MONEY - (lifespan_years * 12000)::MONEY AS lifespan_profit
--- FROM data_list
--- ORDER BY lifespan_profit DESC
-
-
-
+	-- AND s2.app_name = 'Instagram'
+ORDER BY total_income DESC , app_name ASC--sum_total_review_count DESC
+--LIMIT 152
 
 
 
@@ -162,22 +81,4 @@ LIMIT 152
 -- WHERE a.rating IS NOT NULL AND CAST(a.review_count AS integer) + p.review_count IS NOT NULL
 -- GROUP BY 1
 -- ORDER BY combined_review_count DESC
-
-
-
-
-
-
-
--- b. Develop a Top 10 List of the apps that App Trader should buy.
-
-
-
-
--- c. Submit a report based on your findings. All analysis work must be done using PostgreSQL, however you may export query results to create charts in Excel for your report. 
-
-
-
-
-
 
