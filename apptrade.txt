@@ -1,7 +1,7 @@
 WITH
 subquery1 AS (  -- calculates max_price, avg_rating, monthly_revenue, and app store availability
 	SELECT
-	      COALESCE(a.name, p.name) AS app_name -- returns the first non null value, so either name is fine since they are the same
+	      DISTINCT COALESCE(a.name, p.name) AS app_name -- returns the first non null value, so either name is fine since they are the same
 		, GREATEST(a.price, CAST(TRIM('$' FROM p.price) AS numeric))::MONEY AS max_price -- returns whichever price is greater
 		, CASE -- returns avg rating when rating in both tables, or rating when in one table
 			WHEN (a.rating IS NULL AND p.rating IS NOT NULL) THEN ROUND(ROUND(p.rating * 2) / 2, 1)
@@ -27,14 +27,14 @@ subquery1 AS (  -- calculates max_price, avg_rating, monthly_revenue, and app st
 	),
 subquery2 AS (  -- calculates purchase_price (by building on max_price), projected_lifespan (by building on avg_rating), monthly_income (by building on monthly_revenue).
 	SELECT
-		app_name
+		DISTINCT app_name
 		, CASE -- calculates purchase price
 			WHEN max_price <= 1::MONEY THEN 10000::MONEY
 			ELSE (max_price * 10000)::MONEY
 	 		END AS purchase_price
 		, (avg_rating * 2) + 1 AS projected_lifespan
 		, monthly_revenue - 1000::MONEY AS monthly_income  -- is the math right here??
-		, GREATEST(CAST(a.review_count AS integer), p.review_count) AS total_review_count
+		, CAST(a.review_count AS integer) + p.review_count AS total_review_count
 	FROM app_store_apps a
 	FULL JOIN play_store_apps p
 		ON a.name = p.name
@@ -58,27 +58,5 @@ FULL JOIN subquery2 AS s2
 	ON s1.app_name = s2.app_name
 WHERE s2.app_name IS NOT NULL
 	AND total_review_count IS NOT NULL
-	-- AND s2.app_name = 'Instagram'
-ORDER BY total_income DESC , sum_total_review_count DESC
+ORDER BY total_income DESC --, sum_total_review_count DESC
 LIMIT 152
-
-
-
-
-
-
-
-
-
-
-
-Message one-does-not-simply-manipulate-data
-
-
-
-
-
-
-
-
-
